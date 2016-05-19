@@ -97,8 +97,51 @@ int main(int argc, char** argv)
     waitpid( pr3, &status3, 0 );
     if( status1 || status2 || status3 )
     {
-        return 5;
+        return 6;
     }
 
+	pr4 = fork();
+	if(pr4 == 0)
+	{
+		close(pipe3[0]);
+		close(pipe3[1]);
+		execlp(argv[4], argv[4], NULL);
+
+        printf("We should not get here, execlp not working");
+	}
+	waitpid(pr4, &status4, 0);
+	if(status4)
+	{
+		return 7;
+	}
+
+	pr5 = fork();
+	if(pr5 == 0)
+	{
+		dup2(pipe3[1], 1);
+		close(pipe3[0]);
+		close(pipe3[1]);
+		execlp(argv[5], argv[5], argv[6], NULL);
+		
+        printf("We should not get here, execlp not working");
+	}	
+	pr6 = fork();
+	if(pr6 == 0)
+	{
+		dup2(pipe3[0], 0);
+		close(pipe3[0]);
+		close(pipe3[1]);
+		execlp(argv[7], argv[7], NULL);
+
+        printf("We should not get here, execlp not working");
+	}
+	close(pipe3[0]);
+	close(pipe3[1]);
+	waitpid(pid5, &status5, 0);
+	waitpid(pid6, &status6, 0);
+	if(status5 || status6)
+	{
+		return 8;
+	}
 	return 0;
 }
