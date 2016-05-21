@@ -1,2 +1,2 @@
 # AKOS-_-
-No commentsಠ_ಠ
+No comments ಠ_ಠ
