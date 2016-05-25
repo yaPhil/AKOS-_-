@@ -153,16 +153,58 @@ int initialHealth = 0;
 int hitValue = 0, reloadTime = 0, mineTime = 0, stayDrop = 0, moveDrop = 0, immortalTime = 0;
 double stepDelay = 0;
 
-struct item* items = NULL;
+char** fileMap = NULL;
+char** justMap = NULL;
 
+struct item* items = NULL;
+int numItems = 0;
+
+int socketID;
+int bindReturn;
+int acceRet;
+struct sockaddr_in server_addr;
+
+pthread_t* arrThread;
+int playerNumber;
+
+int gameStart;
+int isGameStart;
+int creatorNumber = -1;
+
+struct member
+{
+	int fd;
+	int pos_i;
+	int pos_j;
+	char* name;
+	int health;
+	int shot;
+	int mine;
+	int number;
+	int role;
+	int active;
+};
+
+struct member* data;
+
+void handler(int sig)
+{}
+
+void* fthread(void* arg)
+{
+	struct member* person = (struct member*)arg;
+	if(creatorNumber == -1)
+	{
+		write(person->fd, "you are creator\n enter your name\n\0", 33);
+
+	}
+}
 
 int main(int argc, char* argv[])
 {
     int opt = 0, map = 0, port = 0, log = 0, portNum = 0;
     char* mapFile = NULL;
     char* logFile = NULL;
-    char** fileMap = NULL;
-    char** justMap = NULL;
     FILE* mapIn = NULL;
     FILE* logOut = NULL;
     FILE* mapOut = NULL;
@@ -190,7 +232,7 @@ int main(int argc, char* argv[])
                 exit(1);
         }
     }
-    if(optind >= argc)
+    if(optind > argc)
     {
         fprintf(stderr, "Miss argument for option\n");
         exit(2);
@@ -234,13 +276,13 @@ int main(int argc, char* argv[])
         exit(3);
     }
     i = 0;
-    for(i = 0; i < mapSize; ++i)
+    while(i < mapSize)
     {
         j = 0;
 
         while(j < strlen(fileMap[i]))
         {
-            if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && mapRows == 0 && mapColumns = 0)
+            if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && mapRows == 0 && mapColumns == 0)
             {
                 while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
                 {
@@ -260,10 +302,16 @@ int main(int argc, char* argv[])
             {
                 int k = 0;
                 int m = 0;
+				int st = j;
                 for(k = 0; k < mapRows + 2; ++k)
                 {
                     for(m = 0; m < mapColumns + 2; ++m)
+					{
                         fprintf(mapOut, "%c", fileMap[i][j]);
+						++j;
+					}
+					++i;
+					j = st;
                     fprintf(mapOut, "\n");
                 }
             }
@@ -285,8 +333,137 @@ int main(int argc, char* argv[])
                     ++j;
                 }
             }
-        }
+			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && reloadTime == 0)
+			{
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					reloadTime *= 10;
+					reloadTime += fileMap[i][j] - '0';
+					++j;
+				}
+			}
+			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && mineTime == 0)
+			{
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					mineTime *= 10;
+					mineTime += fileMap[i][j] - '0';
+					++j;
+				}
+			}
+			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && stayDrop == 0)
+			{
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					stayDrop *= 10;
+					stayDrop += fileMap[i][j] - '0';
+					++j;
+				}
+			}
+			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && moveDrop == 0)
+			{
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					moveDrop *= 10;
+					moveDrop += fileMap[i][j] - '0';
+					++j;
+				}
+			}
+			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && stepDelay == 0)
+			{
+				int cnt = 1;
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					stepDelay *= 10;
+					stepDelay += fileMap[i][j] - '0';
+					++j;
+				}
+				++j;
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{ 
+					cnt *= 10;
+					stepDelay *= 10;
+					stepDelay += fileMap[i][j] - '0';
+					++j;
+				}
+				stepDelay /= cnt;
+			}
+			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9' && immortalTime == 0)
+			{
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					immortalTime *= 10;
+					immortalTime += fileMap[i][j] - '0';
+					++j;
+				}
+			}
+			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+			{
+				struct item tmp;
+				items = realloc(items, sizeof(struct item) * (numItems + 1));
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					tmp.row *= 10;
+					tmp.row += fileMap[i][j] - '0';
+					++j;
+				}
+				while(fileMap[i][j] < '0' || fileMap[i][j] > '9')
+					++j;
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					tmp.column *= 10;
+					tmp.column += fileMap[i][j] - '0';
+					++j;
+				}
+				while(fileMap[i][j] < '0' || fileMap[i][j] > '9')
+					++j;
+				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
+				{
+					tmp.effect *= 10;
+					tmp.effect += fileMap[i][j] - '0';
+					++j;
+				}
+				items[numItems] = tmp;
+				++numItems;
+			}
+			++j;
+		}
         ++i;
     }
+	/*printf("%d %d %d %d %d %d %d %d %lf  %d\n", mapRows, mapColumns, initialHealth, hitValue, reloadTime, mineTime, stayDrop, moveDrop, stepDelay, immortalTime);*/
+	justMap = scanFile(mapOut, &mapErr, &mapSize);
+	for(i = 0; i < numItems; ++i)
+	{
+		justMap[items[i].row][items[i].column] = 'I';
+	}
+
+
+	socketID = socket(PF_INET, SOCK_STREAM, 0);
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons((short)portNum);
+	server_addr.sin_addr.s_addr = INADDR_ANY;
+
+	bindReturn = bind(socketID, (struct sockaddr*)(&server_addr), sizeof(struct sockaddr_in));
+	if(bindReturn == -1)
+	{
+		perror("Cant bind");
+		return 6;
+	}
+	listen(socketID, MAGIC_CONST);
+	signal(SIGINT, handler);
+	
+	while(2 * 2 == 4)
+	{
+		acceRet = accept(socketID, NULL, NULL);
+		data = realloc(data, (playerNumber + 1) * sizeof(struct member));
+		data[playerNumber].health = initialHealth;
+		data[playerNumber].shot = 0;
+		data[playerNumber].mine = 0;
+		data[playerNumber].number = playerNumber;
+		data[playerNumber].fd = acceRet;
+		arrThread = realloc(arrThread, (playerNumber + 1) * sizeof(pthread_t));
+		pthread_create(&arrThread[playerNumber], NULL, fthread, &data[playerNumber]);
+		++playerNumber;
+	}
     return 0;
 }
