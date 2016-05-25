@@ -196,7 +196,7 @@ void* fthread(void* arg)
 	if(creatorNumber == -1)
 	{
 		write(person->fd, "you are creator\n enter your name\n\0", 33);
-
+        
 	}
 }
 
