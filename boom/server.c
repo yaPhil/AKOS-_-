@@ -188,16 +188,109 @@ struct member
 struct member* data;
 
 void handler(int sig)
-{}
+{
+    int i;
+    close(socketID);
+    for(i = 0; i < playerNumber; ++i)
+    {
+        pthread_cancel(arrThread[i]);
+    }
+    for(i = 0; i < playerNumber; ++i)
+    {
+        pthread_join(arrThread[i], NULL);
+    }
+    exit(0);
+}
 
 void* fthread(void* arg)
 {
 	struct member* person = (struct member*)arg;
 	if(creatorNumber == -1)
 	{
-		write(person->fd, "you are creator\n enter your name\n\0", 33);
-        
+        int size = 33;
+        char answer[2];
+        int strings = 1;
+        creatorNumber = person->number;
+        send(person->fd, &strings, sizeof(int), 0);
+        send(person->fd, &size, sizeof(int), 0);
+		send(person->fd, "You are creator\nEnter your name\n\0", size, 0);
+        recv(person->fd, &size, sizeof(int), 0);
+        person->name = malloc(size);
+        person->active = 1;
+        person->role = 1;
+        recv(person->fd, person->name, size, 0);
+        printf("%s\n", person->name);
+        size = 49;
+        send(person->fd, &strings, sizeof(int), 0);
+        send(person->fd, &size, sizeof(int), 0);
+        send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", size, 0);
+        answer[0] = '2';
+        while(answer[0] == '2')
+        {
+            recv(person->fd, &size, sizeof(int), 0);
+            recv(person->fd, &answer, size, 0);
+            if(answer[0] == '2')
+            {
+                int i = 0;
+                int cnt = 0;
+                int sz = 0;
+                for(i = 0; i < playerNumber; ++i)
+                {
+                    if(data[i].active == 1)
+                    {
+                        ++cnt;
+                    }
+                }
+                cnt += 2;
+                send(person->fd, &cnt, sizeof(int), 0);
+                sz = 14;
+                send(person->fd, &sz, sizeof(int), 0);
+                send(person->fd, "Players are:\n\0", sz, 0);
+                for(i = 0; i < playerNumber; ++i)
+                {
+                    if(data[i].active == 1)
+                    {
+                        if(data[i].role == 1)
+                        {
+                            sz = strlen(data[i].name) + 14;
+                            send(person->fd, &sz, sizeof(int), 0);
+                            send(person->fd, data[i].name, strlen(data[i].name), 0);
+                            send(person->fd, " are creator\n\0", 14, 0);
+                        }
+                        else
+                        {
+                            sz = strlen(data[i].name) + 13;
+                            send(person->fd, &sz, sizeof(int), 0);
+                            send(person->fd, data[i].name, strlen(data[i].name), 0);
+                            send(person->fd, " are player\n\0", 13, 0);
+                        }
+                    }
+                }
+                sz = 49;
+                send(person->fd, &sz, sizeof(int), 0);
+                send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", sz, 0);
+            }
+            else
+            {
+                
+            }
+        }
 	}
+    else
+    {
+        int size = 41;
+        char answer[2];
+        int strings = 1;
+        send(person->fd, &strings, sizeof(int), 0);
+        send(person->fd, &size, sizeof(int), 0);
+        send(person->fd, "You are player\nEnter your name and wait\n\0", size, 0);
+        recv(person->fd, &size, sizeof(int), 0);
+        person->name = malloc(size);
+        person->active = 1;
+        person->role = 0;
+        recv(person->fd, person->name, size, 0);
+        printf("%s\n", person->name);
+    }
 }
 
 int main(int argc, char* argv[])
@@ -400,6 +493,9 @@ int main(int argc, char* argv[])
 			if(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
 			{
 				struct item tmp;
+                tmp.row = 0;
+                tmp.column = 0;
+                tmp.effect = 0;
 				items = realloc(items, sizeof(struct item) * (numItems + 1));
 				while(fileMap[i][j] >= '0' && fileMap[i][j] <= '9')
 				{
@@ -430,10 +526,20 @@ int main(int argc, char* argv[])
 		}
         ++i;
     }
-	/*printf("%d %d %d %d %d %d %d %d %lf  %d\n", mapRows, mapColumns, initialHealth, hitValue, reloadTime, mineTime, stayDrop, moveDrop, stepDelay, immortalTime);*/
+    
+	printf("%d %d %d %d %d %d %d %d %lf  %d\n", mapRows, mapColumns, initialHealth, hitValue, reloadTime, mineTime, stayDrop, moveDrop, stepDelay, immortalTime);
+
+    fclose(mapOut);
+    mapOut = NULL;
+
+    mapOut = fopen("justMap.out", "r+");
+
 	justMap = scanFile(mapOut, &mapErr, &mapSize);
+    printf("%d HERE %d !!!!!! %d\n", mapSize, numItems, mapErr);
+/*    printf("%d %d\n", items[2].row, items[2].column);*/
 	for(i = 0; i < numItems; ++i)
 	{
+        printf("%d %d\n",items[i].row, items[i].column );
 		justMap[items[i].row][items[i].column] = 'I';
 	}
 
@@ -451,7 +557,7 @@ int main(int argc, char* argv[])
 	}
 	listen(socketID, MAGIC_CONST);
 	signal(SIGINT, handler);
-	
+    printf("before while\n");
 	while(2 * 2 == 4)
 	{
 		acceRet = accept(socketID, NULL, NULL);
@@ -460,6 +566,7 @@ int main(int argc, char* argv[])
 		data[playerNumber].shot = 0;
 		data[playerNumber].mine = 0;
 		data[playerNumber].number = playerNumber;
+        data[playerNumber].name = NULL;
 		data[playerNumber].fd = acceRet;
 		arrThread = realloc(arrThread, (playerNumber + 1) * sizeof(pthread_t));
 		pthread_create(&arrThread[playerNumber], NULL, fthread, &data[playerNumber]);
