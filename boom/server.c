@@ -6,13 +6,19 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#include<time.h>
 #include <arpa/inet.h>
 
 #include <netinet/ip.h>
 #include <netinet/in.h>
 
 #define MAGIC_CONST 5
+
+const int KEY_LEFT = 4479771;
+const int KEY_UP = 4283163;
+const int KEY_RIGHT = 4414235;
+const int KEY_DOWN = 4348699;
+
 
 char*  scanString(FILE* file, int* err, int* size)
 {
@@ -211,6 +217,9 @@ void* fthread(void* arg)
         char answer[2];
         int strings = 1;
         creatorNumber = person->number;
+        size = 2;
+        send(person->fd, &size, sizeof(int), 0);
+        size = 33;
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
 		send(person->fd, "You are creator\nEnter your name\n\0", size, 0);
@@ -272,7 +281,8 @@ void* fthread(void* arg)
             }
             else
             {
-                
+                isGameStart = 1;
+                gameStart = time(0);
             }
         }
 	}
@@ -281,6 +291,12 @@ void* fthread(void* arg)
         int size = 41;
         char answer[2];
         int strings = 1;
+        unsigned int state = 1;
+        int message = 0;
+        size = 1;
+        send(person->fd, &size, sizeof(int), 0);
+        send(person->fd, &stepDelay, sizeof(double), 0);
+        size = 41;
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
         send(person->fd, "You are player\nEnter your name and wait\n\0", size, 0);
@@ -290,6 +306,22 @@ void* fthread(void* arg)
         person->role = 0;
         recv(person->fd, person->name, size, 0);
         printf("%s\n", person->name);
+        while(isGameStart == 0)
+        {
+            
+        }
+        person->pos_i = rand_r(&state) % mapRows + 1;
+        person->pos_j = rand_r(&state) % mapColumns + 1;
+        while(justMap[person->pos_i][person->pos_j] == '.')
+        {
+            person->pos_i = rand_r(&state) % mapRows + 1;
+            person->pos_j = rand_r(&state) % mapColumns + 1;
+        }
+        justMap[person->pos_i][person->pos_j] = '.';
+        message = 1;
+        strings
+        send(person->fd, &message, sizeof(int), 0);
+        
     }
 }
 

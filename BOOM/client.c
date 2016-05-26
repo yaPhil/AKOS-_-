@@ -7,7 +7,9 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#include<sys/ioctl.h>
+#include<locale.h>
+#include<termios.h>
 #include <arpa/inet.h>
 
 #include <netinet/ip.h>
@@ -24,6 +26,8 @@ const int KEY_DOWN = 4348699;
 char* hostName;
 int portNum = 0;
 int socketID = 0;
+double stepDelay = 0;
+int cmd = 0;
 
 pthread_t reciver;
 
@@ -86,10 +90,13 @@ void sendMessage()
     free(msg);
 }
 
-void* fthread(void* arg);
+void* fthread(void* arg)
 {
     while(1)
     {
+        usleep(1000000 * stepDelay);
+        cmd = 0;
+        send(socketID, &cmd, sizeof(int), 0);
         getMessage();
     }
     return NULL;
@@ -151,20 +158,22 @@ int main(int argc, char* argv[])
     else
     {
         int message = 0;
-        int tmp = 0;
+        recv(socketID, &stepDelay, sizeof(double), 0);
+        
         getMessage();
         sendMessage();
-        recv(socketID, &message, sizeof(int), 0);
+        getMessage();
         printf("Game starts\n");
         tcgetattr(0, &oldTermParam);
         setNoncononical();
-        pthread_create(&reciver, fthread, NULL, NULL);
+        pthread_create(&reciver, NULL, fthread, NULL);
         
         while(2 * 2 == 4)
         {
-            tmp = 0;
-            read(0, &tmp, 4);
-            send(socketID, &tmp, sizeof(int), 0);
+            cmd = 0;
+            read(0, &cmd, 4);
+            send(socketID, &cmd, sizeof(int), 0);
         }
+    }
     return 0;
 }
