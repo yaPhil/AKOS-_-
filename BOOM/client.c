@@ -15,13 +15,38 @@
 
 #define MAGIC_CONST 5
 
+const int KEY_LEFT = 4479771;
+const int KEY_UP = 4283163;
+const int KEY_RIGHT = 4414235;
+const int KEY_DOWN = 4348699;
+
+
 char* hostName;
 int portNum = 0;
 int socketID = 0;
 
+pthread_t reciver;
+
 struct hostent *hst;
 struct sockaddr_in server_addr;
+struct termios oldTermParam;
 
+void setNoncononical()
+{
+	int err;
+	struct termios newTermParam = oldTermParam;
+	newTermParam.c_lflag &= ~(ICANON);
+	newTermParam.c_lflag &= ~(ECHO);
+	newTermParam.c_cc[VMIN] = 1;
+	/*printf("noncocnonical%d\n", newTermParam.c_lflag);*/
+	err = tcsetattr(0, TCSANOW, &newTermParam);
+}
+
+void setCononical()
+{
+	int err = tcsetattr(0, TCSANOW, &oldTermParam);
+	/*printf("cononical%d\n", oldTermParam.c_lflag);*/
+}
 
 void getMessage()
 {
@@ -61,9 +86,18 @@ void sendMessage()
     free(msg);
 }
 
+void* fthread(void* arg);
+{
+    while(1)
+    {
+        getMessage();
+    }
+    return NULL;
+}
+
 int main(int argc, char* argv[])
 {
-    int opt = 0, port = 0;
+    int opt = 0, port = 0, type = 0;
     while((opt = getopt(argc, argv, "s:p:")) != -1)
     {
         switch (opt)
@@ -104,12 +138,33 @@ int main(int argc, char* argv[])
         printf("connect fail\n");
         return 5;
     }
-    printf("before while\n");
-    while(1)
+    recv(socketID, &type, sizeof(int), 0);
+    if(type == 2)
     {
+        printf("before while\n");
+        while(1)
+        {
+            getMessage();
+            sendMessage();
+        }
+    }
+    else
+    {
+        int message = 0;
+        int tmp = 0;
         getMessage();
         sendMessage();
-    }
-    
+        recv(socketID, &message, sizeof(int), 0);
+        printf("Game starts\n");
+        tcgetattr(0, &oldTermParam);
+        setNoncononical();
+        pthread_create(&reciver, fthread, NULL, NULL);
+        
+        while(2 * 2 == 4)
+        {
+            tmp = 0;
+            read(0, &tmp, 4);
+            send(socketID, &tmp, sizeof(int), 0);
+        }
     return 0;
 }
