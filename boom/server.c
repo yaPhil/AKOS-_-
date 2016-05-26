@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,13 +7,15 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include<time.h>
+#include <time.h>
 #include <arpa/inet.h>
 
 #include <netinet/ip.h>
 #include <netinet/in.h>
 
 #define MAGIC_CONST 5
+extern char *optarg;
+extern int optind;
 
 const int KEY_LEFT = 4479771;
 const int KEY_UP = 4283163;
@@ -208,6 +211,43 @@ void handler(int sig)
     exit(0);
 }
 
+int min(const int a, const int b)
+{
+    if(a < b)
+        return a;
+    else
+        return b;
+}
+int max(const int a, const int b)
+{
+    if(a > b)
+        return a;
+    else
+        return b;
+}
+
+
+void sendMap(int i, int j, int socket)
+{
+    int firstRow = 0, lastRow = 0, firstColumn = 0, lastColumn = 0;
+    int strings, size, k, m;
+    firstRow = max(i - 10, 0);
+    lastRow = min(i + 10, mapRows + 1);
+    firstColumn = max(0, j - 10);
+    lastColumn = min(mapColumns + 1, j + 10);
+    strings = lastRow - firstRow + 1;
+    size = lastColumn - firstColumn + 1;
+    send(socket, &strings, sizeof(int), 0);
+    send(socket, &size, sizeof(int), 0);
+    for(k = firstRow; k <= lastRow; ++k)
+    {
+        for(m = firstColumn; m <= lastColumn; ++m)
+        {
+            send(socket, &justMap[k][m], sizeof(char), 0);
+        }
+    }
+}
+
 void* fthread(void* arg)
 {
 	struct member* person = (struct member*)arg;
@@ -289,7 +329,6 @@ void* fthread(void* arg)
     else
     {
         int size = 41;
-        char answer[2];
         int strings = 1;
         unsigned int state = 1;
         int message = 0;
@@ -319,10 +358,15 @@ void* fthread(void* arg)
         }
         justMap[person->pos_i][person->pos_j] = '.';
         message = 1;
-        strings
-        send(person->fd, &message, sizeof(int), 0);
+        strings = 1;
+        size = 28;
+        send(person->fd, &strings, sizeof(int), 0);
+        send(person->fd, &size, sizeof(int), 0);
+        send(person->fd, "Press u to use, s to shoot\n\0", size, 0);
+        sendMap(person->pos_i, person->pos_j, person->fd);
         
     }
+    return NULL;
 }
 
 int main(int argc, char* argv[])
@@ -568,7 +612,7 @@ int main(int argc, char* argv[])
 
 	justMap = scanFile(mapOut, &mapErr, &mapSize);
     printf("%d HERE %d !!!!!! %d\n", mapSize, numItems, mapErr);
-/*    printf("%d %d\n", items[2].row, items[2].column);*/
+    printf("%d %d\n", items[2].row, items[2].column);
 	for(i = 0; i < numItems; ++i)
 	{
         printf("%d %d\n",items[i].row, items[i].column );
