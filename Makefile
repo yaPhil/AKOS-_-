@@ -1,5 +1,5 @@
-CC = gcc
-CFLAGS = -O0 -Wall -Wextra -ansi -pedantic -g
+CC = clang
+CFLAGS = -O0 -Wall -Wextra -lpthread -ansi -pedantic -g
 
 all: exec
 

@@ -156,6 +156,13 @@ struct item
     int effect;
 };
 
+struct mine
+{
+    int row;
+    int column;
+    int owner;
+};
+
 int mapRows = 0;
 int mapColumns = 0;
 int initialHealth = 0;
@@ -166,6 +173,8 @@ char** fileMap = NULL;
 char** justMap = NULL;
 
 struct item* items = NULL;
+struct mine* mines = NULL;
+int numMines = 0;
 int numItems = 0;
 
 int socketID;
@@ -452,6 +461,65 @@ void getCurentMap(int i, int j, char** map)
     }
 }
 
+int isMine(int i, int j)
+{
+    int k = 0;
+    for(k = 0; k < numMines; ++k)
+    {
+        if(mines[k].row == i && mines[k].column == j)
+        {
+            return mines[k].owner;
+        }
+    }
+    return 0;
+}
+
+int isItem(int i, int j)
+{
+    int k = 0;
+    for(k = 0; k < numItems; ++k)
+    {
+        if(items[k].row == i && items[k].column == j)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void useItem(int i, int j, struct member* p)
+{
+    int k = 0;
+    for(k = 0; k < numItems; ++k)
+    {
+        if(items[k].row == i && items[k].column == j)
+        {
+            p->health += items[k].effect;
+            items[k].effect = items[k].row = items[k].column = 0;
+            return;
+        }
+    }
+    return;
+}
+
+void blowUp(int i, int j, struct member* p)
+{
+    int k = 0;
+    for(k = 0; k < numMines; ++k)
+    {
+        if(mines[k].row == i && mines[k].column == j)
+        {
+            if(mines[k].owner != p->number)
+            {
+                p->health -= hitValue;
+                mines[k].owner = mines[k].row = mines[k].column = 0;
+                return;
+            }
+        }
+    }
+    return;
+}
+
 void* fthread(void* arg)
 {
 	struct member* person = (struct member*)arg;
@@ -707,10 +775,10 @@ void* fthread(void* arg)
         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
         message = 1;
         strings = 1;
-        size = 28;
+        size = 39;
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
-        send(person->fd, "Press u to use, s to shoot\n\0", size, 0);
+        send(person->fd, "Press u to use, s to shoot, m to mine\n\0", size, 0);
         lastMap = malloc(21 * sizeof(char*));
         newMap = malloc(21 * sizeof(char*));
         for(i = 0; i < 21; ++i)
@@ -737,12 +805,19 @@ void* fthread(void* arg)
                 }
                 if((char)cmd == 'u')
                 {
-
+                    useItem(person->pos_i, person->pos_j, person);
                 }
                 if((char)cmd == 'm')
                 {
-                    if(gameStart + immortalTime < time(0) && person->mine + mineTime < time(0))
+                    if(gameStart + immortalTime < time(0) && person->mine + mineTime < time(0) && isMine(person->pos_i, person->pos_j) == 0)
                     {
+                        struct mine tmp;
+                        tmp.row = person->pos_i;
+                        tmp.column = person->pos_j;
+                        tmp.owner = person->number;
+                        mines = realloc(mines, (numMines + 1) * sizeof(struct mine));
+                        mines[numMines] = tmp;
+                        ++numMines;
                         person->mine = time(0);
                     }
                 }
@@ -753,12 +828,28 @@ void* fthread(void* arg)
                     if(justMap[person->pos_i][person->pos_j - 1] != '@' &&
                        justMap[person->pos_i][person->pos_j - 1] != '#')
                     {
-                        justMap[person->pos_i][person->pos_j] = ' ';
+                        int flagItem = isItem(person->pos_i, person->pos_j);
+                        int flagMine = isMine(person->pos_i, person->pos_j);
+                        if(flagItem == 1 && flagMine == person->number)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'I';
+                        }
+                            else if (flagMine == person->number)
+                            {
+                                justMap[person->pos_i][person->pos_j] = 'M';
+                            }
+                                else
+                                    justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i][person->pos_j - 1] = '@';
+                        person->health -= moveDrop;
+                        blowUp(person->pos_i, person->pos_j - 1, person);
                         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j - 1]);
                         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                         person->pos_j--;
-                        person->health -= moveDrop;
 
                     }
                     else
@@ -775,12 +866,28 @@ void* fthread(void* arg)
                     if(justMap[person->pos_i][person->pos_j + 1] != '@' &&
                        justMap[person->pos_i][person->pos_j + 1] != '#')
                     {
-                        justMap[person->pos_i][person->pos_j] = ' ';
+                        int flagItem = isItem(person->pos_i, person->pos_j);
+                        int flagMine = isMine(person->pos_i, person->pos_j);
+                        if(flagItem == 1 && flagMine == person->number)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'I';
+                        }
+                            else if (flagMine == person->number)
+                            {
+                                justMap[person->pos_i][person->pos_j] = 'M';
+                            }
+                                else
+                                    justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i][person->pos_j + 1] = '@';
+                        blowUp(person->pos_i, person->pos_j + 1, person);
+                        person->health -= moveDrop;
                         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j + 1]);
                         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                         person->pos_j++;
-                        person->health -= moveDrop;
                     }
                     else
                     {
@@ -795,12 +902,28 @@ void* fthread(void* arg)
                     if(justMap[person->pos_i - 1][person->pos_j] != '@' &&
                        justMap[person->pos_i - 1][person->pos_j] != '#')
                     {
-                        justMap[person->pos_i][person->pos_j] = ' ';
+                        int flagItem = isItem(person->pos_i, person->pos_j);
+                        int flagMine = isMine(person->pos_i, person->pos_j);
+                        if(flagItem == 1 && flagMine == person->number)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'I';
+                        }
+                            else if (flagMine == person->number)
+                            {
+                                justMap[person->pos_i][person->pos_j] = 'M';
+                            }
+                                else
+                                    justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i - 1][person->pos_j] = '@';
+                        blowUp(person->pos_i - 1, person->pos_j, person);
+                        person->health -= moveDrop;
                         pthread_mutex_unlock(&mutex[person->pos_i - 1][person->pos_j]);
                         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                         person->pos_i--;
-                        person->health -= moveDrop;
                     }
                     else
                     {
@@ -815,12 +938,28 @@ void* fthread(void* arg)
                     if(justMap[person->pos_i + 1][person->pos_j] != '@' &&
                        justMap[person->pos_i + 1][person->pos_j] != '#')
                     {
-                        justMap[person->pos_i][person->pos_j] = ' ';
+                        int flagItem = isItem(person->pos_i, person->pos_j);
+                        int flagMine = isMine(person->pos_i, person->pos_j);
+                        if(flagItem == 1 && flagMine == person->number)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            justMap[person->pos_i][person->pos_j] = 'I';
+                        }
+                            else if (flagMine == person->number)
+                            {
+                                justMap[person->pos_i][person->pos_j] = 'M';
+                            }
+                                else
+                                    justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i + 1][person->pos_j] = '@';
+                        blowUp(person->pos_i + 1, person->pos_j, person);
+                        person->health -= moveDrop;
                         pthread_mutex_unlock(&mutex[person->pos_i + 1][person->pos_j]);
                         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                         person->pos_i++;
-                        person->health -= moveDrop;
                     }
                     else
                     {
@@ -1070,7 +1209,8 @@ int main(int argc, char* argv[])
         ++i;
     }
     
-	printf("%d %d %d %d %d %d %d %d %lf  %d\n", mapRows, mapColumns, initialHealth, hitValue, reloadTime, mineTime, stayDrop, moveDrop, stepDelay, immortalTime);
+    printf("%d %d %d %d %d %d %d %d %lf  %d\n", mapRows, mapColumns, initialHealth,
+           hitValue, reloadTime, mineTime, stayDrop, moveDrop, stepDelay, immortalTime);
 
     fclose(mapOut);
     mapOut = NULL;
