@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -333,7 +333,7 @@ void* fthread(void* arg)
 	if(creatorNumber == -1)
 	{
         int size = 33;
-        char answer[5];
+        char* answer = malloc(30);
         int strings = 1;
         creatorNumber = person->number;
         size = 2;
@@ -353,9 +353,11 @@ void* fthread(void* arg)
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
         send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", size, 0);
-        answer[0] = '9';
+        //answer[0] = '9';
         recv(person->fd, &size, sizeof(int), 0);
-        recv(person->fd, &answer, size, 0);
+        printf("----get size%d\n", size);
+        recv(person->fd, answer, size, 0);
+        printf("get %d answer %s\n", size, answer);
         while(size != 2 || (answer[0] != '2' && answer[0] != '1'))
         {
             int sz = 49;
@@ -364,7 +366,7 @@ void* fthread(void* arg)
             send(person->fd, &sz, sizeof(int), 0);
             send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", sz, 0);
             recv(person->fd, &size, sizeof(int), 0);
-            recv(person->fd, &answer, size, 0);
+            recv(person->fd, answer, size, 0);
         }
         while(answer[0] == '2')
         {
@@ -395,7 +397,10 @@ void* fthread(void* arg)
                         char* res = concatinate2(data[i].name, 0);
                         sz = strlen(data[i].name) + 13;
                         send(person->fd, &sz, sizeof(int), 0);
-                        send(person->fd, res, sz * sizeof(char), 0);
+                        while(sz != 0)
+                        {
+                            sz -= send(person->fd, res + strlen(res) + 1 - sz, sz * sizeof(char), 0);
+                        }
                         free(res);
                     }
                     else
@@ -403,7 +408,10 @@ void* fthread(void* arg)
                         char* res = concatinate2(data[i].name, 1);
                         sz = strlen(data[i].name) + 12;
                         send(person->fd, &sz, sizeof(int), 0);
-                        send(person->fd, res, sz * sizeof(char), 0);
+                        while(sz != 0)
+                        {
+                            sz -= send(person->fd, res + strlen(res) + 1 - sz, sz * sizeof(char), 0);
+                        }
                         free(res);
                     }
                 }
@@ -413,7 +421,7 @@ void* fthread(void* arg)
             send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", sz, 0);
             printf("send invite\n");
             recv(person->fd, &sz, sizeof(int), 0);
-            recv(person->fd, &answer, sz, 0);
+            recv(person->fd, answer, sz, 0);
             printf("%c--------%d\n", answer[0], sz);
             while(sz != 2 || (answer[0] != '2' && answer[0] != '1'))
             {
@@ -424,7 +432,7 @@ void* fthread(void* arg)
                 send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", snd, 0);
                 
                 recv(person->fd, &sz, sizeof(int), 0);
-                recv(person->fd, &answer, sz, 0);
+                recv(person->fd, answer, sz, 0);
             }
         }
         
@@ -437,7 +445,7 @@ void* fthread(void* arg)
         send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", size, 0);
         
         recv(person->fd, &size, sizeof(int), 0);
-        recv(person->fd, &answer, size, 0);
+        recv(person->fd, answer, size, 0);
         while(size != 2 || (answer[0] != '1' && answer[0] != '2'))
         {
             int sz = 42;
@@ -446,7 +454,7 @@ void* fthread(void* arg)
             send(person->fd, &sz, sizeof(int), 0);
             send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", size, 0);
             recv(person->fd, &size, sizeof(int), 0);
-            recv(person->fd, &answer, size, 0);
+            recv(person->fd, answer, size, 0);
         }
 
         while(answer[0] == '2')
@@ -470,10 +478,13 @@ void* fthread(void* arg)
                 {
                     if(data[i].role == 1)
                     {
+                        char* res = concatinate2(data[i].name, 0);
                         sz = strlen(data[i].name) + 13;
                         send(person->fd, &sz, sizeof(int), 0);
-                        send(person->fd, data[i].name, strlen(data[i].name), 0);
-                        send(person->fd, " is creator\n\0", 13, 0);
+                        while(sz != 0)
+                        {
+                            sz -= send(person->fd, res + strlen(res) + 1 - sz, sz, 0);
+                        }
                     }
                     else
                     {
@@ -486,7 +497,10 @@ void* fthread(void* arg)
                         res = concatinate(data[i].name, pos_i, pos_j, health, sz1, sz2, sz3, strlen(data[i].name));
                         sz = sz1 + sz2 + sz3 + strlen(data[i].name) + 5;
                         send(person->fd, &sz, sizeof(int), 0);
-                        send(person->fd, res, sz * sizeof(char), 0);
+                        while(sz != 0)
+                        {
+                            sz -= send(person->fd, res + strlen(res) + 1 - sz, sz * sizeof(char), 0);
+                        }
                         free(res);
                         free(pos_i);
                         free(pos_j);
@@ -499,7 +513,7 @@ void* fthread(void* arg)
             send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", sz, 0);
             
             recv(person->fd, &size, sizeof(int), 0);
-            recv(person->fd, &answer, size, 0);
+            recv(person->fd, answer, size, 0);
             while(size != 2 || (answer[0] != '1' && answer[0] != '2'))
             {
                 int sz = 42;
@@ -508,7 +522,7 @@ void* fthread(void* arg)
                 send(person->fd, &sz, sizeof(int), 0);
                 send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", size, 0);
                 recv(person->fd, &size, sizeof(int), 0);
-                recv(person->fd, &answer, size, 0);
+                recv(person->fd, answer, size, 0);
             }
         }
         /*
@@ -544,20 +558,22 @@ void* fthread(void* arg)
         person->active = 1;
         person->role = 0;
         recv(person->fd, person->name, size, 0);
-        printf("%s\n", person->name);
+        printf("%s\n",person->name);
         while(isGameStart == 0)
         {
             
         }
         person->pos_i = rand_r(&state) % mapRows + 1;
         person->pos_j = rand_r(&state) % mapColumns + 1;
+
         pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
         while(justMap[person->pos_i][person->pos_j] == '@')
         {
-            pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+            int last_i = person->pos_i, last_j = person->pos_j;
             person->pos_i = rand_r(&state) % mapRows + 1;
             person->pos_j = rand_r(&state) % mapColumns + 1;
             pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+            pthread_mutex_unlock(&mutex[last_i][last_j]);
         }
         justMap[person->pos_i][person->pos_j] = '@';
         pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
@@ -571,9 +587,16 @@ void* fthread(void* arg)
         {
             int cmd = 0;
             recv(person->fd, &cmd, sizeof(int), 0);
+            if(cmd == 0)
+            {
+               person->health -= stayDrop;
+            }
             if((char)cmd == 's')
             {
-                
+                if(gameStart + immortalTime < time(0))
+                {
+
+                }
             }
             if((char)cmd == 'u')
             {
@@ -581,64 +604,94 @@ void* fthread(void* arg)
             }
             if((char)cmd == 'm')
             {
-                
+                if(gameStart + immortalTime < time(0))
+                {
+
+                }
             }
             if(cmd == KEY_LEFT)
             {
                 pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j - 1]);
                 if(justMap[person->pos_i][person->pos_j - 1] != '@' &&
                    justMap[person->pos_i][person->pos_j - 1] != '#')
                 {
                     justMap[person->pos_i][person->pos_j] = ' ';
                     justMap[person->pos_i][person->pos_j - 1] = '@';
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j - 1]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                     person->pos_j--;
                     
                 }
                 else
+                {
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j - 1]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                }
+
+                person->health -= moveDrop;
             }
             if(cmd == KEY_RIGHT)
             {
                 pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j + 1]);
                 if(justMap[person->pos_i][person->pos_j + 1] != '@' &&
                    justMap[person->pos_i][person->pos_j + 1] != '#')
                 {
                     justMap[person->pos_i][person->pos_j] = ' ';
+                    justMap[person->pos_i][person->pos_j + 1] = '@';
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j + 1]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                     person->pos_j++;
-                    justMap[person->pos_i][person->pos_j] = '@';
+
                 }
                 else
+                {
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j + 1]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                }
+
+                person->health -= moveDrop;
             }
             if(cmd == KEY_UP)
             {
                 pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                pthread_mutex_lock(&mutex[person->pos_i - 1][person->pos_j]);
                 if(justMap[person->pos_i - 1][person->pos_j] != '@' &&
                    justMap[person->pos_i - 1][person->pos_j] != '#')
                 {
                     justMap[person->pos_i][person->pos_j] = ' ';
+                    justMap[person->pos_i - 1][person->pos_j] = '@';
+                    pthread_mutex_unlock(&mutex[person->pos_i - 1][person->pos_j]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                     person->pos_i--;
-                    justMap[person->pos_i][person->pos_j] = '@';
                 }
                 else
+                {
+                    pthread_mutex_unlock(&mutex[person->pos_i - 1][person->pos_j]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                }
+                person->health -= moveDrop;
             }
             if(cmd == KEY_DOWN)
             {
                 pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                pthread_mutex_lock(&mutex[person->pos_i + 1][person->pos_j]);
                 if(justMap[person->pos_i + 1][person->pos_j] != '@' &&
                    justMap[person->pos_i + 1][person->pos_j] != '#')
                 {
                     justMap[person->pos_i][person->pos_j] = ' ';
+                    justMap[person->pos_i + 1][person->pos_j] = '@';
+                    pthread_mutex_unlock(&mutex[person->pos_i + 1][person->pos_j]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
                     person->pos_i++;
-                    justMap[person->pos_i][person->pos_j] = '@';
                 }
                 else
+                {
+                    pthread_mutex_unlock(&mutex[person->pos_i + 1][person->pos_j]);
                     pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                }
+                person->health -= moveDrop;
             }
             sendMap(person->pos_i, person->pos_j, person->fd);
         }

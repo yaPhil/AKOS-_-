@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -58,6 +58,7 @@ void setCononical()
 
 void getMessage()
 {
+    printf("-------------reciving message\n");
     int strings = 0;
     int size = 0;
     int i = 0;
@@ -71,6 +72,7 @@ void getMessage()
         printf("%s", msg);
         free(msg);
     }
+    printf("-------------haave  recieved sfsdsg\n");
 }
 
 void getMap()
@@ -95,13 +97,14 @@ void sendMessage()
 {
     int size = 0;
     char* msg = NULL;
-    char c;
-    scanf("%c", &c);
+    char c = ' ';
+    printf("------------sending mess\n");
+    c = fgetc(stdin);
     while (c != '\n' && c != '\0')
     {
         msg = realloc(msg, size + 1);
         msg[size] = c;
-        scanf("%c", &c);
+        c = fgetc(stdin);
         ++size;
     }
     msg = realloc(msg, size + 1);
@@ -109,7 +112,9 @@ void sendMessage()
     ++size;
     send(socketID, &size, sizeof(int), 0);
     send(socketID, msg, size, 0);
+    printf("-------%d------- %s\n",size, msg);
     free(msg);
+    printf("--------------have sent alalalal\n");
 }
 
 void* fthread(void* arg)
