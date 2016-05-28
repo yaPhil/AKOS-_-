@@ -174,6 +174,7 @@ int acceRet;
 struct sockaddr_in server_addr;
 
 pthread_t* arrThread;
+pthread_mutex_t **mutex;
 int playerNumber;
 
 int gameStart;
@@ -226,15 +227,93 @@ int max(const int a, const int b)
         return b;
 }
 
+char* intToStr(int a, int* sz)
+{
+    char* str = NULL;
+    int size = 0;
+    int i = 0;
+    while(a != 0)
+    {
+        int tmp = a % 10;
+        str = realloc(str, (size + 1)*sizeof(char));
+        str[size] = '0' + tmp;
+        ++size;
+        a /= 10;
+    }
+    for(i = 0; i < size / 2; ++i)
+    {
+        char t = str[i];
+        str[i] = str[size - i - 1];
+        str[size - i - 1] = t;
+    }
+    *sz = size;
+    return str;
+}
+
+char* concatinate(char* name, char* a, char* b, char* c, int sz1, int sz2, int sz3, int sz_n)
+{
+    char* ans = NULL;
+    int i = 0;
+    ans = malloc((sz_n + sz1 + sz2 + sz3 + 5) * sizeof(char));
+    for(i = 0; i < sz_n; ++i)
+    {
+        ans[i] = name[i];
+    }
+    ans[sz_n] = ' ';
+    for(i = 0; i < sz1; ++i)
+    {
+        ans[i + sz_n + 1] = a[i];
+    }
+    ans[sz_n + sz1 + 1] = ' ';
+    for(i = 0; i < sz2; ++i)
+    {
+        ans[i + sz_n + sz1 + 2] = b[i];
+    }
+    ans[sz_n + sz1 + sz2 + 2] = ' ';
+    for(i = 0; i < sz3; ++i)
+    {
+        ans[i + sz_n + sz1 + sz2 + 3] = c[i];
+    }
+    ans[sz_n + sz1 + sz2 + sz3 + 3] = '\n';
+    ans[sz_n + sz1 + sz2 + sz3 + 4] = '\0';
+    return ans;
+}
+
+char* concatinate2(char* name, int f)
+{
+    char* res = malloc(strlen(name) + 1);
+    int i = 0;
+    int sz = strlen(name);
+    for(i = 0; i < sz; ++i)
+    {
+        res[i] = name[i];
+    }
+    res[sz] = ' ';
+    if(f == 0)
+    {
+        res = realloc(res, sz + 13);
+        res[sz + 1] = 'i'; res[sz + 2] = 's'; res[sz + 3] = ' '; res[sz + 4] = 'c';
+        res[sz + 5] = 'r'; res[sz + 6] = 'e'; res[sz + 7] = 'a'; res[sz + 8] = 't';
+        res[sz + 9] = 'o'; res[sz + 10] ='r'; res[sz + 11] = '\n'; res[sz + 12] = '\0';
+    }
+    else
+    {
+        res = realloc(res, sz + 12);
+        res[sz + 1] = 'i'; res[sz + 2] = 's'; res[sz + 3] = ' '; res[sz + 4] = 'p';
+        res[sz + 5] = 'l'; res[sz + 6] = 'a'; res[sz + 7] = 'y'; res[sz + 8] = 'e';
+        res[sz + 9] = 'r'; res[sz + 10] = '\n'; res[sz + 11] = '\0';
+    }
+    return res;
+}
 
 void sendMap(int i, int j, int socket)
 {
     int firstRow = 0, lastRow = 0, firstColumn = 0, lastColumn = 0;
     int strings, size, k, m;
     firstRow = max(i - 10, 0);
-    lastRow = min(i + 10, mapRows + 1);
+    lastRow = min(i + 11, mapRows + 1);
     firstColumn = max(0, j - 10);
-    lastColumn = min(mapColumns + 1, j + 10);
+    lastColumn = min(mapColumns + 1, j + 11);
     strings = lastRow - firstRow + 1;
     size = lastColumn - firstColumn + 1;
     send(socket, &strings, sizeof(int), 0);
@@ -254,7 +333,7 @@ void* fthread(void* arg)
 	if(creatorNumber == -1)
 	{
         int size = 33;
-        char answer[2];
+        char answer[5];
         int strings = 1;
         creatorNumber = person->number;
         size = 2;
@@ -270,61 +349,171 @@ void* fthread(void* arg)
         recv(person->fd, person->name, size, 0);
         printf("%s\n", person->name);
         size = 49;
+        strings = 1;
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
         send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", size, 0);
-        answer[0] = '2';
-        while(answer[0] == '2')
+        answer[0] = '9';
+        recv(person->fd, &size, sizeof(int), 0);
+        recv(person->fd, &answer, size, 0);
+        while(size != 2 || (answer[0] != '2' && answer[0] != '1'))
         {
+            int sz = 49;
+            int str = 1;
+            send(person->fd, &str, sizeof(int), 0);
+            send(person->fd, &sz, sizeof(int), 0);
+            send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", sz, 0);
             recv(person->fd, &size, sizeof(int), 0);
             recv(person->fd, &answer, size, 0);
-            if(answer[0] == '2')
+        }
+        while(answer[0] == '2')
+        {
+            int i = 0;
+            int cnt = 0;
+            int sz = 0;
+            for(i = 0; i < playerNumber; ++i)
             {
-                int i = 0;
-                int cnt = 0;
-                int sz = 0;
-                for(i = 0; i < playerNumber; ++i)
+                if(data[i].active == 1)
                 {
-                    if(data[i].active == 1)
-                    {
-                        ++cnt;
-                    }
+                    ++cnt;
                 }
-                cnt += 2;
-                send(person->fd, &cnt, sizeof(int), 0);
-                sz = 14;
-                send(person->fd, &sz, sizeof(int), 0);
-                send(person->fd, "Players are:\n\0", sz, 0);
-                for(i = 0; i < playerNumber; ++i)
-                {
-                    if(data[i].active == 1)
-                    {
-                        if(data[i].role == 1)
-                        {
-                            sz = strlen(data[i].name) + 14;
-                            send(person->fd, &sz, sizeof(int), 0);
-                            send(person->fd, data[i].name, strlen(data[i].name), 0);
-                            send(person->fd, " are creator\n\0", 14, 0);
-                        }
-                        else
-                        {
-                            sz = strlen(data[i].name) + 13;
-                            send(person->fd, &sz, sizeof(int), 0);
-                            send(person->fd, data[i].name, strlen(data[i].name), 0);
-                            send(person->fd, " are player\n\0", 13, 0);
-                        }
-                    }
-                }
-                sz = 49;
-                send(person->fd, &sz, sizeof(int), 0);
-                send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", sz, 0);
             }
-            else
+            cnt += 2;
+            send(person->fd, &cnt, sizeof(int), 0);
+            sz = 14;
+            send(person->fd, &sz, sizeof(int), 0);
+            send(person->fd, "Players are:\n\0", sz, 0);
+            
+            printf("send mess %d\n", cnt);
+            
+            for(i = 0; i < playerNumber; ++i)
             {
-                isGameStart = 1;
-                gameStart = time(0);
+                if(data[i].active == 1)
+                {
+                    if(data[i].role == 1)
+                    {
+                        char* res = concatinate2(data[i].name, 0);
+                        sz = strlen(data[i].name) + 13;
+                        send(person->fd, &sz, sizeof(int), 0);
+                        send(person->fd, res, sz * sizeof(char), 0);
+                        free(res);
+                    }
+                    else
+                    {
+                        char* res = concatinate2(data[i].name, 1);
+                        sz = strlen(data[i].name) + 12;
+                        send(person->fd, &sz, sizeof(int), 0);
+                        send(person->fd, res, sz * sizeof(char), 0);
+                        free(res);
+                    }
+                }
+            }
+            sz = 49;
+            send(person->fd, &sz, sizeof(int), 0);
+            send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", sz, 0);
+            printf("send invite\n");
+            recv(person->fd, &sz, sizeof(int), 0);
+            recv(person->fd, &answer, sz, 0);
+            printf("%c--------%d\n", answer[0], sz);
+            while(sz != 2 || (answer[0] != '2' && answer[0] != '1'))
+            {
+                int snd = 49;
+                int str = 1;
+                send(person->fd, &str, sizeof(int), 0);
+                send(person->fd, &snd, sizeof(int), 0);
+                send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", snd, 0);
+                
+                recv(person->fd, &sz, sizeof(int), 0);
+                recv(person->fd, &answer, sz, 0);
             }
         }
+        
+        isGameStart = 1;
+        gameStart = time(0);
+        strings = 1;
+        size = 42;
+        send(person->fd, &strings, sizeof(int), 0);
+        send(person->fd, &size, sizeof(int), 0);
+        send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", size, 0);
+        
+        recv(person->fd, &size, sizeof(int), 0);
+        recv(person->fd, &answer, size, 0);
+        while(size != 2 || (answer[0] != '1' && answer[0] != '2'))
+        {
+            int sz = 42;
+            int str = 1;
+            send(person->fd, &str, sizeof(int), 0);
+            send(person->fd, &sz, sizeof(int), 0);
+            send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", size, 0);
+            recv(person->fd, &size, sizeof(int), 0);
+            recv(person->fd, &answer, size, 0);
+        }
+
+        while(answer[0] == '2')
+        {
+            int i = 0, cnt = 0, sz = 0;
+            for(i = 0; i < playerNumber; ++i)
+            {
+                if(data[i].active == 1 )
+                {
+                    ++cnt;
+                }
+            }
+            cnt += 2;
+            send(person->fd, &cnt, sizeof(int), 0);
+            sz = 25;
+            send(person->fd, &sz, sizeof(int), 0);
+            send(person->fd, "Name pos_i pos_j health\n\0", sz, 0);
+            for(i = 0; i < playerNumber; ++i)
+            {
+                if(data[i].active == 1)
+                {
+                    if(data[i].role == 1)
+                    {
+                        sz = strlen(data[i].name) + 13;
+                        send(person->fd, &sz, sizeof(int), 0);
+                        send(person->fd, data[i].name, strlen(data[i].name), 0);
+                        send(person->fd, " is creator\n\0", 13, 0);
+                    }
+                    else
+                    {
+                        int sz1 = 0, sz2 = 0, sz3 = 0;
+                        char* pos_i = NULL, *pos_j = NULL, *health = NULL;
+                        char* res = NULL;
+                        pos_i = intToStr(data[i].pos_i, &sz1);
+                        pos_j = intToStr(data[i].pos_j, &sz2);
+                        health = intToStr(data[i].health, &sz3);
+                        res = concatinate(data[i].name, pos_i, pos_j, health, sz1, sz2, sz3, strlen(data[i].name));
+                        sz = sz1 + sz2 + sz3 + strlen(data[i].name) + 5;
+                        send(person->fd, &sz, sizeof(int), 0);
+                        send(person->fd, res, sz * sizeof(char), 0);
+                        free(res);
+                        free(pos_i);
+                        free(pos_j);
+                        free(health);
+                    }
+                }
+            }
+            sz = 42;
+            send(person->fd, &sz, sizeof(int), 0);
+            send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", sz, 0);
+            
+            recv(person->fd, &size, sizeof(int), 0);
+            recv(person->fd, &answer, size, 0);
+            while(size != 2 || (answer[0] != '1' && answer[0] != '2'))
+            {
+                int sz = 42;
+                int str = 1;
+                send(person->fd, &str, sizeof(int), 0);
+                send(person->fd, &sz, sizeof(int), 0);
+                send(person->fd, "Input 1 to end game; 2 to see statistics\n\0", size, 0);
+                recv(person->fd, &size, sizeof(int), 0);
+                recv(person->fd, &answer, size, 0);
+            }
+        }
+        /*
+         ENDING GAME
+         */
 	}
     else
     {
@@ -332,8 +521,19 @@ void* fthread(void* arg)
         int strings = 1;
         unsigned int state = 1;
         int message = 0;
-        size = 1;
-        send(person->fd, &size, sizeof(int), 0);
+        if(isGameStart == 1)
+        {
+            size = 3;
+            send(person->fd, &size, sizeof(int), 0);
+            while(isGameStart == 1)
+            {
+            }
+        }
+        else
+        {
+            size = 1;
+            send(person->fd, &size, sizeof(int), 0);
+        }
         send(person->fd, &stepDelay, sizeof(double), 0);
         size = 41;
         send(person->fd, &strings, sizeof(int), 0);
@@ -351,19 +551,97 @@ void* fthread(void* arg)
         }
         person->pos_i = rand_r(&state) % mapRows + 1;
         person->pos_j = rand_r(&state) % mapColumns + 1;
-        while(justMap[person->pos_i][person->pos_j] == '.')
+        pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+        while(justMap[person->pos_i][person->pos_j] == '@')
         {
+            pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
             person->pos_i = rand_r(&state) % mapRows + 1;
             person->pos_j = rand_r(&state) % mapColumns + 1;
+            pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
         }
-        justMap[person->pos_i][person->pos_j] = '.';
+        justMap[person->pos_i][person->pos_j] = '@';
+        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
         message = 1;
         strings = 1;
         size = 28;
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
         send(person->fd, "Press u to use, s to shoot\n\0", size, 0);
-        sendMap(person->pos_i, person->pos_j, person->fd);
+        while(2 * 2 == 4)
+        {
+            int cmd = 0;
+            recv(person->fd, &cmd, sizeof(int), 0);
+            if((char)cmd == 's')
+            {
+                
+            }
+            if((char)cmd == 'u')
+            {
+                
+            }
+            if((char)cmd == 'm')
+            {
+                
+            }
+            if(cmd == KEY_LEFT)
+            {
+                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                if(justMap[person->pos_i][person->pos_j - 1] != '@' &&
+                   justMap[person->pos_i][person->pos_j - 1] != '#')
+                {
+                    justMap[person->pos_i][person->pos_j] = ' ';
+                    justMap[person->pos_i][person->pos_j - 1] = '@';
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    person->pos_j--;
+                    
+                }
+                else
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+            }
+            if(cmd == KEY_RIGHT)
+            {
+                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                if(justMap[person->pos_i][person->pos_j + 1] != '@' &&
+                   justMap[person->pos_i][person->pos_j + 1] != '#')
+                {
+                    justMap[person->pos_i][person->pos_j] = ' ';
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    person->pos_j++;
+                    justMap[person->pos_i][person->pos_j] = '@';
+                }
+                else
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+            }
+            if(cmd == KEY_UP)
+            {
+                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                if(justMap[person->pos_i - 1][person->pos_j] != '@' &&
+                   justMap[person->pos_i - 1][person->pos_j] != '#')
+                {
+                    justMap[person->pos_i][person->pos_j] = ' ';
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    person->pos_i--;
+                    justMap[person->pos_i][person->pos_j] = '@';
+                }
+                else
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+            }
+            if(cmd == KEY_DOWN)
+            {
+                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                if(justMap[person->pos_i + 1][person->pos_j] != '@' &&
+                   justMap[person->pos_i + 1][person->pos_j] != '#')
+                {
+                    justMap[person->pos_i][person->pos_j] = ' ';
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    person->pos_i++;
+                    justMap[person->pos_i][person->pos_j] = '@';
+                }
+                else
+                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+            }
+            sendMap(person->pos_i, person->pos_j, person->fd);
+        }
         
     }
     return NULL;
@@ -611,6 +889,21 @@ int main(int argc, char* argv[])
     mapOut = fopen("justMap.out", "r+");
 
 	justMap = scanFile(mapOut, &mapErr, &mapSize);
+    
+    mutex = malloc((mapRows + 1) * sizeof(pthread_mutex_t*));
+    for(i = 0; i <= mapRows; ++i)
+    {
+        mutex[i] = malloc((mapColumns + 1) * sizeof(pthread_mutex_t));
+    }
+    
+    for(i = 1; i <= mapRows; ++i)
+    {
+        for(j = 1; j <= mapColumns; ++j)
+        {
+            pthread_mutex_init(&(mutex[i][j]), NULL);
+        }
+    }
+    
     printf("%d HERE %d !!!!!! %d\n", mapSize, numItems, mapErr);
     printf("%d %d\n", items[2].row, items[2].column);
 	for(i = 0; i < numItems; ++i)

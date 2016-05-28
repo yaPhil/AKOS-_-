@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,15 +8,18 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include<sys/ioctl.h>
-#include<locale.h>
-#include<termios.h>
+#include <sys/ioctl.h>
+#include <locale.h>
+#include <termios.h>
 #include <arpa/inet.h>
 
 #include <netinet/ip.h>
 #include <netinet/in.h>
 
 #define MAGIC_CONST 5
+
+extern char *optarg;
+extern int optind;
 
 const int KEY_LEFT = 4479771;
 const int KEY_UP = 4283163;
@@ -63,10 +66,28 @@ void getMessage()
     for(i = 0; i < strings; ++i)
     {
         recv(socketID, &size, sizeof(int), 0);
-        msg = malloc(size);
+        msg = malloc(size + 2);
         recv(socketID, msg, size, 0);
         printf("%s", msg);
         free(msg);
+    }
+}
+
+void getMap()
+{
+    int strings = 0, size = 0;
+    int i = 0, j = 0;
+    recv(socketID, &strings, sizeof(int), 0);
+    recv(socketID, &size, sizeof(int), 0);
+    for(i = 0; i < strings; ++i)
+    {
+        for(j = 0; j < size; ++j)
+        {
+            char c;
+            recv(socketID, &c, sizeof(char), 0);
+            printf("%c", c);
+        }
+        printf("\n");
     }
 }
 
@@ -93,12 +114,12 @@ void sendMessage()
 
 void* fthread(void* arg)
 {
+    int tmp = 0;
     while(1)
     {
         usleep(1000000 * stepDelay);
-        cmd = 0;
-        send(socketID, &cmd, sizeof(int), 0);
-        getMessage();
+        send(socketID, &tmp, sizeof(int), 0);
+        getMap();
     }
     return NULL;
 }
@@ -159,6 +180,10 @@ int main(int argc, char* argv[])
     else
     {
         int message = 0;
+        if(type == 3)
+        {
+            printf("Sorry, wait ending of the game\n");
+        }
         recv(socketID, &stepDelay, sizeof(double), 0);
         
         getMessage();
