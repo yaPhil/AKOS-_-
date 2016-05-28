@@ -641,6 +641,17 @@ void* fthread(void* arg)
         printf("----get size %d\n", size);
         answer = (char*)realloc(answer, size + 2);
         answer[0] = '1';
+/*//        int tmp = 0;
+//        int saz = size;
+//        while(saz != 0)
+//        {
+//            char c = ' ';
+//            printf("scan\n");
+//            saz -= read(person->fd, &c, 1);
+//            printf("%c\n", c);
+//            answer[tmp] = c;
+//            ++tmp;
+//        }*/
         printf("------recev return------%d\n", recv(person->fd, answer, size, 0));
         printf("get %d answer %c\n", size, answer[0]);
         while(size != 2 || (answer[0] != '2' && answer[0] != '1'))
