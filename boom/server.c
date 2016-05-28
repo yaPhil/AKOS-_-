@@ -306,23 +306,148 @@ char* concatinate2(char* name, int f)
     return res;
 }
 
-void sendMap(int i, int j, int socket)
+void sendMap(char** lastMap, char** newMap, int socket)
+{
+    int maxStr = 21, maxCol = 21;
+    int i = 0, j = 0;
+    int f = 0;
+    for(i = 0; i < maxStr; ++i)
+    {
+        for(j = 0; j < maxCol; ++j)
+        {
+            if(newMap[i][j] != lastMap[i][j])
+            {
+                f = 1;
+                break;
+            }
+        }
+        if(f == 1)
+            break;
+    }
+    if(f == 1)
+    {
+        send(socket, &maxStr, sizeof(int), 0);
+        send(socket, &maxCol, sizeof(int), 0);
+        for(i = 0; i < maxStr; ++i)
+        {
+            for(j = 0; j < maxCol; ++j)
+            {
+                send(socket, &newMap[i][j], sizeof(char), 0);
+                lastMap[i][j] = newMap[i][j];
+            }
+        }
+
+    }
+}
+
+void getCurentMap(int i, int j, char** map)
 {
     int firstRow = 0, lastRow = 0, firstColumn = 0, lastColumn = 0;
     int strings, size, k, m;
+    int maxStr = 21, maxCol = 21;
+    int cur_i = 0, cur_j = 0;
     firstRow = max(i - 10, 0);
-    lastRow = min(i + 11, mapRows + 1);
+    lastRow = min(i + 10, mapRows + 1);
     firstColumn = max(0, j - 10);
-    lastColumn = min(mapColumns + 1, j + 11);
+    lastColumn = min(mapColumns + 1, j + 10);
     strings = lastRow - firstRow + 1;
     size = lastColumn - firstColumn + 1;
-    send(socket, &strings, sizeof(int), 0);
-    send(socket, &size, sizeof(int), 0);
-    for(k = firstRow; k <= lastRow; ++k)
+    if(firstRow == 0)
     {
-        for(m = firstColumn; m <= lastColumn; ++m)
+        for(k = 0; k < maxStr - strings; ++k)
         {
-            send(socket, &justMap[k][m], sizeof(char), 0);
+            for(m = 0; m < maxCol; ++m)
+            {
+                map[cur_i][cur_j] = '#';
+                ++cur_j;
+            }
+            ++cur_i;
+            cur_j = 0;
+        }
+        if(firstColumn == 0)
+        {
+            for(k = firstRow; k <= lastRow; ++k)
+            {
+                for(m = 0; m < maxCol - size; ++m)
+                {
+                    map[cur_i][cur_j] = '#';
+                    ++cur_j;
+                }
+                for(m = firstColumn; m <= lastColumn; ++m)
+                {
+                    map[cur_i][cur_j] = justMap[k][m];
+                    ++cur_j;
+                }
+                ++cur_i;
+                cur_j = 0;
+            }
+        }
+        else
+        {
+            for(k = firstRow; k <= lastRow; ++k)
+            {
+                for(m = firstColumn; m <= lastColumn; ++m)
+                {
+                    map[cur_i][cur_j] = justMap[k][m];
+                    ++cur_j;
+                }
+                for(m = 0; m < maxCol - size; ++m)
+                {
+                    map[cur_i][cur_j] = '#';
+                    ++cur_j;
+                }
+                ++cur_i;
+                cur_j = 0;
+            }
+        }
+    }
+    else
+    {
+        if(firstColumn == 0)
+        {
+            for(k = firstRow; k <= lastRow; ++k)
+            {
+                for(m = 0; m < maxCol - size; ++m)
+                {
+                    map[cur_i][cur_j] = '#';
+                    ++cur_j;
+                }
+                for(m = firstColumn; m <= lastColumn; ++m)
+                {
+                    map[cur_i][cur_j] = justMap[k][m];
+                    ++cur_j;
+                }
+                ++cur_i;
+                cur_j = 0;
+            }
+        }
+        else
+        {
+            for(k = firstRow; k <= lastRow; ++k)
+            {
+                for(m = firstColumn; m <= lastColumn; ++m)
+                {
+                    map[cur_i][cur_j] = justMap[k][m];
+                    ++cur_j;
+                }
+                for(m = 0; m < maxCol - size; ++m)
+                {
+                    map[cur_i][cur_j] = '#';
+                    ++cur_j;
+                }
+                ++cur_i;
+                cur_j = 0;
+            }
+        }
+        for(k = 0; k < maxStr - strings; ++k)
+        {
+            for(m = 0; m < maxCol; ++m)
+            {
+                map[cur_i][cur_j] = '#';
+                ++cur_j;
+            }
+            ++cur_i;
+            cur_j = 0;
         }
     }
 }
@@ -333,7 +458,7 @@ void* fthread(void* arg)
 	if(creatorNumber == -1)
 	{
         int size = 33;
-        char* answer = malloc(30);
+        char* answer = NULL;
         int strings = 1;
         creatorNumber = person->number;
         size = 2;
@@ -356,6 +481,7 @@ void* fthread(void* arg)
         //answer[0] = '9';
         recv(person->fd, &size, sizeof(int), 0);
         printf("----get size%d\n", size);
+        answer = realloc(answer, size);
         recv(person->fd, answer, size, 0);
         printf("get %d answer %s\n", size, answer);
         while(size != 2 || (answer[0] != '2' && answer[0] != '1'))
@@ -535,6 +661,8 @@ void* fthread(void* arg)
         int strings = 1;
         unsigned int state = 1;
         int message = 0;
+        char **lastMap = NULL, **newMap = NULL;
+        int i = 0, j = 0;
         if(isGameStart == 1)
         {
             size = 3;
@@ -583,6 +711,13 @@ void* fthread(void* arg)
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
         send(person->fd, "Press u to use, s to shoot\n\0", size, 0);
+        lastMap = malloc(21 * sizeof(char*));
+        newMap = malloc(21 * sizeof(char*));
+        for(i = 0; i < 21; ++i)
+        {
+            lastMap[i] = malloc(21 * sizeof(char));
+            newMap[i] = malloc(21 * sizeof(char));
+        }
         while(2 * 2 == 4)
         {
             int cmd = 0;
@@ -591,111 +726,112 @@ void* fthread(void* arg)
             {
                person->health -= stayDrop;
             }
-            if((char)cmd == 's')
+            if(person->mine + mineTime < time(0))
             {
-                if(gameStart + immortalTime < time(0))
+                if((char)cmd == 's')
+                {
+                    if(gameStart + immortalTime < time(0))
+                    {
+
+                    }
+                }
+                if((char)cmd == 'u')
                 {
 
                 }
-            }
-            if((char)cmd == 'u')
-            {
-                
-            }
-            if((char)cmd == 'm')
-            {
-                if(gameStart + immortalTime < time(0))
+                if((char)cmd == 'm')
                 {
+                    if(gameStart + immortalTime < time(0) && person->mine + mineTime < time(0))
+                    {
+                        person->mine = time(0);
+                    }
+                }
+                if(cmd == KEY_LEFT)
+                {
+                    pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                    pthread_mutex_lock(&mutex[person->pos_i][person->pos_j - 1]);
+                    if(justMap[person->pos_i][person->pos_j - 1] != '@' &&
+                       justMap[person->pos_i][person->pos_j - 1] != '#')
+                    {
+                        justMap[person->pos_i][person->pos_j] = ' ';
+                        justMap[person->pos_i][person->pos_j - 1] = '@';
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j - 1]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                        person->pos_j--;
+                        person->health -= moveDrop;
+
+                    }
+                    else
+                    {
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j - 1]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    }
 
                 }
+                if(cmd == KEY_RIGHT)
+                {
+                    pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                    pthread_mutex_lock(&mutex[person->pos_i][person->pos_j + 1]);
+                    if(justMap[person->pos_i][person->pos_j + 1] != '@' &&
+                       justMap[person->pos_i][person->pos_j + 1] != '#')
+                    {
+                        justMap[person->pos_i][person->pos_j] = ' ';
+                        justMap[person->pos_i][person->pos_j + 1] = '@';
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j + 1]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                        person->pos_j++;
+                        person->health -= moveDrop;
+                    }
+                    else
+                    {
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j + 1]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    }
+                }
+                if(cmd == KEY_UP)
+                {
+                    pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                    pthread_mutex_lock(&mutex[person->pos_i - 1][person->pos_j]);
+                    if(justMap[person->pos_i - 1][person->pos_j] != '@' &&
+                       justMap[person->pos_i - 1][person->pos_j] != '#')
+                    {
+                        justMap[person->pos_i][person->pos_j] = ' ';
+                        justMap[person->pos_i - 1][person->pos_j] = '@';
+                        pthread_mutex_unlock(&mutex[person->pos_i - 1][person->pos_j]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                        person->pos_i--;
+                        person->health -= moveDrop;
+                    }
+                    else
+                    {
+                        pthread_mutex_unlock(&mutex[person->pos_i - 1][person->pos_j]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    }
+                }
+                if(cmd == KEY_DOWN)
+                {
+                    pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
+                    pthread_mutex_lock(&mutex[person->pos_i + 1][person->pos_j]);
+                    if(justMap[person->pos_i + 1][person->pos_j] != '@' &&
+                       justMap[person->pos_i + 1][person->pos_j] != '#')
+                    {
+                        justMap[person->pos_i][person->pos_j] = ' ';
+                        justMap[person->pos_i + 1][person->pos_j] = '@';
+                        pthread_mutex_unlock(&mutex[person->pos_i + 1][person->pos_j]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                        person->pos_i++;
+                        person->health -= moveDrop;
+                    }
+                    else
+                    {
+                        pthread_mutex_unlock(&mutex[person->pos_i + 1][person->pos_j]);
+                        pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
+                    }
+                }
             }
-            if(cmd == KEY_LEFT)
-            {
-                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
-                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j - 1]);
-                if(justMap[person->pos_i][person->pos_j - 1] != '@' &&
-                   justMap[person->pos_i][person->pos_j - 1] != '#')
-                {
-                    justMap[person->pos_i][person->pos_j] = ' ';
-                    justMap[person->pos_i][person->pos_j - 1] = '@';
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j - 1]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                    person->pos_j--;
-                    
-                }
-                else
-                {
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j - 1]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                }
-
-                person->health -= moveDrop;
-            }
-            if(cmd == KEY_RIGHT)
-            {
-                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
-                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j + 1]);
-                if(justMap[person->pos_i][person->pos_j + 1] != '@' &&
-                   justMap[person->pos_i][person->pos_j + 1] != '#')
-                {
-                    justMap[person->pos_i][person->pos_j] = ' ';
-                    justMap[person->pos_i][person->pos_j + 1] = '@';
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j + 1]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                    person->pos_j++;
-
-                }
-                else
-                {
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j + 1]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                }
-
-                person->health -= moveDrop;
-            }
-            if(cmd == KEY_UP)
-            {
-                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
-                pthread_mutex_lock(&mutex[person->pos_i - 1][person->pos_j]);
-                if(justMap[person->pos_i - 1][person->pos_j] != '@' &&
-                   justMap[person->pos_i - 1][person->pos_j] != '#')
-                {
-                    justMap[person->pos_i][person->pos_j] = ' ';
-                    justMap[person->pos_i - 1][person->pos_j] = '@';
-                    pthread_mutex_unlock(&mutex[person->pos_i - 1][person->pos_j]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                    person->pos_i--;
-                }
-                else
-                {
-                    pthread_mutex_unlock(&mutex[person->pos_i - 1][person->pos_j]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                }
-                person->health -= moveDrop;
-            }
-            if(cmd == KEY_DOWN)
-            {
-                pthread_mutex_lock(&mutex[person->pos_i][person->pos_j]);
-                pthread_mutex_lock(&mutex[person->pos_i + 1][person->pos_j]);
-                if(justMap[person->pos_i + 1][person->pos_j] != '@' &&
-                   justMap[person->pos_i + 1][person->pos_j] != '#')
-                {
-                    justMap[person->pos_i][person->pos_j] = ' ';
-                    justMap[person->pos_i + 1][person->pos_j] = '@';
-                    pthread_mutex_unlock(&mutex[person->pos_i + 1][person->pos_j]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                    person->pos_i++;
-                }
-                else
-                {
-                    pthread_mutex_unlock(&mutex[person->pos_i + 1][person->pos_j]);
-                    pthread_mutex_unlock(&mutex[person->pos_i][person->pos_j]);
-                }
-                person->health -= moveDrop;
-            }
-            sendMap(person->pos_i, person->pos_j, person->fd);
+            getCurentMap(person->pos_i, person->pos_j, newMap);
+            sendMap(lastMap, newMap, person->fd);
         }
-        
     }
     return NULL;
 }
