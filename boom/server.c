@@ -349,7 +349,34 @@ void sendMap(char** lastMap, char** newMap, int socket)
     }
 }
 
-void getCurentMap(int i, int j, char** map)
+int isMine(int i, int j)
+{
+    int k = 0;
+    for(k = 0; k < numMines; ++k)
+    {
+        if(mines[k].row == i && mines[k].column == j)
+        {
+            return mines[k].owner;
+        }
+    }
+    return 0;
+}
+
+int isItem(int i, int j)
+{
+    int k = 0;
+    for(k = 0; k < numItems; ++k)
+    {
+        if(items[k].row == i && items[k].column == j)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+void getCurentMap(int i, int j, char** map, int number)
 {
     int firstRow = 0, lastRow = 0, firstColumn = 0, lastColumn = 0;
     int strings, size, k, m;
@@ -384,8 +411,31 @@ void getCurentMap(int i, int j, char** map)
                 }
                 for(m = firstColumn; m <= lastColumn; ++m)
                 {
-                    map[cur_i][cur_j] = justMap[k][m];
+                    if(justMap[k][m] == '#' || justMap[k][m] == '@')
+                    {
+                        map[cur_i][cur_j] = justMap[k][m];
+                    }
+                    else
+                    {
+                        int flagItem = isItem(k, m);
+                        int flagMine = isMine(k, m);
+                        if(flagItem == 1 && flagMine == number)
+                        {
+                            map[cur_i][cur_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            map[cur_i][cur_j] = 'I';
+                        }
+                            else if (flagMine == number)
+                            {
+                                map[cur_i][cur_j] = 'M';
+                            }
+                                else
+                                    map[cur_i][cur_j] = ' ';
+                    }
                     ++cur_j;
+
                 }
                 ++cur_i;
                 cur_j = 0;
@@ -397,7 +447,29 @@ void getCurentMap(int i, int j, char** map)
             {
                 for(m = firstColumn; m <= lastColumn; ++m)
                 {
-                    map[cur_i][cur_j] = justMap[k][m];
+                    if(justMap[k][m] == '#' || justMap[k][m] == '@')
+                    {
+                        map[cur_i][cur_j] = justMap[k][m];
+                    }
+                    else
+                    {
+                        int flagItem = isItem(k, m);
+                        int flagMine = isMine(k, m);
+                        if(flagItem == 1 && flagMine == number)
+                        {
+                            map[cur_i][cur_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            map[cur_i][cur_j] = 'I';
+                        }
+                            else if (flagMine == number)
+                            {
+                                map[cur_i][cur_j] = 'M';
+                            }
+                                else
+                                    map[cur_i][cur_j] = ' ';
+                    }
                     ++cur_j;
                 }
                 for(m = 0; m < maxCol - size; ++m)
@@ -423,7 +495,29 @@ void getCurentMap(int i, int j, char** map)
                 }
                 for(m = firstColumn; m <= lastColumn; ++m)
                 {
-                    map[cur_i][cur_j] = justMap[k][m];
+                    if(justMap[k][m] == '#' || justMap[k][m] == '@')
+                    {
+                        map[cur_i][cur_j] = justMap[k][m];
+                    }
+                    else
+                    {
+                        int flagItem = isItem(k, m);
+                        int flagMine = isMine(k, m);
+                        if(flagItem == 1 && flagMine == number)
+                        {
+                            map[cur_i][cur_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            map[cur_i][cur_j] = 'I';
+                        }
+                            else if (flagMine == number)
+                            {
+                                map[cur_i][cur_j] = 'M';
+                            }
+                                else
+                                    map[cur_i][cur_j] = ' ';
+                    }
                     ++cur_j;
                 }
                 ++cur_i;
@@ -436,7 +530,29 @@ void getCurentMap(int i, int j, char** map)
             {
                 for(m = firstColumn; m <= lastColumn; ++m)
                 {
-                    map[cur_i][cur_j] = justMap[k][m];
+                    if(justMap[k][m] == '#' || justMap[k][m] == '@')
+                    {
+                        map[cur_i][cur_j] = justMap[k][m];
+                    }
+                    else
+                    {
+                        int flagItem = isItem(k, m);
+                        int flagMine = isMine(k, m);
+                        if(flagItem == 1 && flagMine == number)
+                        {
+                            map[cur_i][cur_j] = 'T';
+                        }
+                        else if(flagItem == 1)
+                        {
+                            map[cur_i][cur_j] = 'I';
+                        }
+                            else if (flagMine == number)
+                            {
+                                map[cur_i][cur_j] = 'M';
+                            }
+                                else
+                                    map[cur_i][cur_j] = ' ';
+                    }
                     ++cur_j;
                 }
                 for(m = 0; m < maxCol - size; ++m)
@@ -459,32 +575,6 @@ void getCurentMap(int i, int j, char** map)
             cur_j = 0;
         }
     }
-}
-
-int isMine(int i, int j)
-{
-    int k = 0;
-    for(k = 0; k < numMines; ++k)
-    {
-        if(mines[k].row == i && mines[k].column == j)
-        {
-            return mines[k].owner;
-        }
-    }
-    return 0;
-}
-
-int isItem(int i, int j)
-{
-    int k = 0;
-    for(k = 0; k < numItems; ++k)
-    {
-        if(items[k].row == i && items[k].column == j)
-        {
-            return 1;
-        }
-    }
-    return 0;
 }
 
 void useItem(int i, int j, struct member* p)
@@ -829,21 +919,12 @@ void* fthread(void* arg)
                        justMap[person->pos_i][person->pos_j - 1] != '#')
                     {
                         int flagItem = isItem(person->pos_i, person->pos_j);
-                        int flagMine = isMine(person->pos_i, person->pos_j);
-                        if(flagItem == 1 && flagMine == person->number)
-                        {
-                            justMap[person->pos_i][person->pos_j] = 'T';
-                        }
-                        else if(flagItem == 1)
+                        if(flagItem == 1)
                         {
                             justMap[person->pos_i][person->pos_j] = 'I';
                         }
-                            else if (flagMine == person->number)
-                            {
-                                justMap[person->pos_i][person->pos_j] = 'M';
-                            }
-                                else
-                                    justMap[person->pos_i][person->pos_j] = ' ';
+                        else
+                            justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i][person->pos_j - 1] = '@';
                         person->health -= moveDrop;
                         blowUp(person->pos_i, person->pos_j - 1, person);
@@ -867,21 +948,12 @@ void* fthread(void* arg)
                        justMap[person->pos_i][person->pos_j + 1] != '#')
                     {
                         int flagItem = isItem(person->pos_i, person->pos_j);
-                        int flagMine = isMine(person->pos_i, person->pos_j);
-                        if(flagItem == 1 && flagMine == person->number)
-                        {
-                            justMap[person->pos_i][person->pos_j] = 'T';
-                        }
-                        else if(flagItem == 1)
+                        if(flagItem == 1)
                         {
                             justMap[person->pos_i][person->pos_j] = 'I';
                         }
-                            else if (flagMine == person->number)
-                            {
-                                justMap[person->pos_i][person->pos_j] = 'M';
-                            }
-                                else
-                                    justMap[person->pos_i][person->pos_j] = ' ';
+                        else
+                            justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i][person->pos_j + 1] = '@';
                         blowUp(person->pos_i, person->pos_j + 1, person);
                         person->health -= moveDrop;
@@ -903,21 +975,12 @@ void* fthread(void* arg)
                        justMap[person->pos_i - 1][person->pos_j] != '#')
                     {
                         int flagItem = isItem(person->pos_i, person->pos_j);
-                        int flagMine = isMine(person->pos_i, person->pos_j);
-                        if(flagItem == 1 && flagMine == person->number)
-                        {
-                            justMap[person->pos_i][person->pos_j] = 'T';
-                        }
-                        else if(flagItem == 1)
+                        if(flagItem == 1)
                         {
                             justMap[person->pos_i][person->pos_j] = 'I';
                         }
-                            else if (flagMine == person->number)
-                            {
-                                justMap[person->pos_i][person->pos_j] = 'M';
-                            }
-                                else
-                                    justMap[person->pos_i][person->pos_j] = ' ';
+                        else
+                            justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i - 1][person->pos_j] = '@';
                         blowUp(person->pos_i - 1, person->pos_j, person);
                         person->health -= moveDrop;
@@ -939,21 +1002,12 @@ void* fthread(void* arg)
                        justMap[person->pos_i + 1][person->pos_j] != '#')
                     {
                         int flagItem = isItem(person->pos_i, person->pos_j);
-                        int flagMine = isMine(person->pos_i, person->pos_j);
-                        if(flagItem == 1 && flagMine == person->number)
-                        {
-                            justMap[person->pos_i][person->pos_j] = 'T';
-                        }
-                        else if(flagItem == 1)
+                        if(flagItem == 1)
                         {
                             justMap[person->pos_i][person->pos_j] = 'I';
                         }
-                            else if (flagMine == person->number)
-                            {
-                                justMap[person->pos_i][person->pos_j] = 'M';
-                            }
-                                else
-                                    justMap[person->pos_i][person->pos_j] = ' ';
+                        else
+                            justMap[person->pos_i][person->pos_j] = ' ';
                         justMap[person->pos_i + 1][person->pos_j] = '@';
                         blowUp(person->pos_i + 1, person->pos_j, person);
                         person->health -= moveDrop;
@@ -968,7 +1022,7 @@ void* fthread(void* arg)
                     }
                 }
             }
-            getCurentMap(person->pos_i, person->pos_j, newMap);
+            getCurentMap(person->pos_i, person->pos_j, newMap, person->number);
             sendMap(lastMap, newMap, person->fd);
         }
     }

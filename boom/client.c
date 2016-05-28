@@ -79,6 +79,8 @@ void getMap()
 {
     int strings = 0, size = 0;
     int i = 0, j = 0;
+    for(i = 0; i < 50; ++i)
+        printf("\n");
     recv(socketID, &strings, sizeof(int), 0);
     recv(socketID, &size, sizeof(int), 0);
     for(i = 0; i < strings; ++i)
