@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -610,13 +610,14 @@ void blowUp(int i, int j, struct member* p)
     return;
 }
 
+char* answer = NULL;
+
 void* fthread(void* arg)
 {
 	struct member* person = (struct member*)arg;
 	if(creatorNumber == -1)
 	{
         int size = 33;
-        char* answer = NULL;
         int strings = 1;
         creatorNumber = person->number;
         size = 2;
@@ -636,12 +637,12 @@ void* fthread(void* arg)
         send(person->fd, &strings, sizeof(int), 0);
         send(person->fd, &size, sizeof(int), 0);
         send(person->fd, "Input 1 to start game; 2 to see list of players\n\0", size, 0);
-        //answer[0] = '9';
         recv(person->fd, &size, sizeof(int), 0);
-        printf("----get size%d\n", size);
-        answer = realloc(answer, size);
-        recv(person->fd, answer, size, 0);
-        printf("get %d answer %s\n", size, answer);
+        printf("----get size %d\n", size);
+        answer = (char*)realloc(answer, size + 2);
+        answer[0] = '1';
+        printf("------recev return------%d\n", recv(person->fd, answer, size, 0));
+        printf("get %d answer %c\n", size, answer[0]);
         while(size != 2 || (answer[0] != '2' && answer[0] != '1'))
         {
             int sz = 49;
@@ -1078,7 +1079,7 @@ int main(int argc, char* argv[])
         logFile = "serverPid\0";
     }
     if(port == 0)
-        portNum = 8000;
+        portNum = 1500;
 
     mapIn = fopen(mapFile, "r");
     logOut = fopen(logFile, "w");

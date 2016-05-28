@@ -1,4 +1,5 @@
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE_EXTENDED
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +13,7 @@
 #include <locale.h>
 #include <termios.h>
 #include <arpa/inet.h>
-
+#include <time.h>
 #include <netinet/ip.h>
 #include <netinet/in.h>
 
@@ -34,7 +35,7 @@ double stepDelay = 0;
 int cmd = 0;
 
 pthread_t reciver;
-
+pthread_t sendThread;
 struct hostent *hst;
 struct sockaddr_in server_addr;
 struct termios oldTermParam;
@@ -58,15 +59,16 @@ void setCononical()
 
 void getMessage()
 {
-    printf("-------------reciving message\n");
     int strings = 0;
     int size = 0;
     int i = 0;
     char* msg = NULL;
     recv(socketID, &strings, sizeof(int), 0);
+    printf("----%d---------reciving message\n", strings);
     for(i = 0; i < strings; ++i)
     {
         recv(socketID, &size, sizeof(int), 0);
+        printf("----%d ", size);
         msg = malloc(size + 2);
         recv(socketID, msg, size, 0);
         printf("%s", msg);
@@ -79,10 +81,12 @@ void getMap()
 {
     int strings = 0, size = 0;
     int i = 0, j = 0;
-    for(i = 0; i < 50; ++i)
-        printf("\n");
     recv(socketID, &strings, sizeof(int), 0);
     recv(socketID, &size, sizeof(int), 0);
+    for(i = 0; i < 50; ++i)
+    {
+        printf("\n");
+    }
     for(i = 0; i < strings; ++i)
     {
         for(j = 0; j < size; ++j)
@@ -112,8 +116,8 @@ void sendMessage()
     msg = realloc(msg, size + 1);
     msg[size] = '\0';
     ++size;
-    send(socketID, &size, sizeof(int), 0);
-    send(socketID, msg, size, 0);
+    write(socketID, &size, sizeof(int));
+    write(socketID, msg, size);
     printf("-------%d------- %s\n",size, msg);
     free(msg);
     printf("--------------have sent alalalal\n");
@@ -126,7 +130,18 @@ void* fthread(void* arg)
     {
         usleep(1000000 * stepDelay);
         send(socketID, &tmp, sizeof(int), 0);
-        getMap();
+    }
+    return NULL;
+}
+
+void* sender(void* arg)
+{
+    setNoncononical();
+    while(1)
+    {
+        cmd = 0;
+        read(0, &cmd, 4);
+        send(socketID, &cmd, sizeof(int), 0);
     }
     return NULL;
 }
@@ -157,7 +172,7 @@ int main(int argc, char* argv[])
     }
     
     if(port == 0)
-        portNum = 8000;
+        portNum = 1500;
     
     socketID = socket(PF_INET, SOCK_STREAM, 0);
     hst = gethostbyname(hostName);
@@ -198,15 +213,14 @@ int main(int argc, char* argv[])
         getMessage();
         printf("Game starts\n");
         tcgetattr(0, &oldTermParam);
-        setNoncononical();
+
         pthread_create(&reciver, NULL, fthread, NULL);
-        
+        pthread_create(&sendThread, NULL, sender, NULL);
         while(2 * 2 == 4)
         {
-            cmd = 0;
-            read(0, &cmd, 4);
-            send(socketID, &cmd, sizeof(int), 0);
+            getMap();
         }
+        setCononical();
     }
     return 0;
 }
